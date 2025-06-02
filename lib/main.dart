@@ -81,13 +81,13 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget{
     );
   }
 
-  @override
-  Size get prefferedSize => Size.fromHeight(kToolbarHeight);
+  //@override
+  //Size get prefferedSize => Size.fromHeight(kToolbarHeight);
 
   @override
   // TODO: implement preferredSize
   Size get preferredSize{
-    return new Size.fromHeight(70.0);
+    return Size.fromHeight(kToolbarHeight);
   }
 
 }
