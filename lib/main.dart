@@ -7,6 +7,7 @@ import 'package:mobil_uygulama_proje/language.dart';
 import 'package:mobil_uygulama_proje/login.dart';
 import 'package:mobil_uygulama_proje/tur_search.dart';
 import 'package:mobil_uygulama_proje/sign_up.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
 
@@ -24,6 +25,12 @@ void main() async {
   else{
     await Firebase.initializeApp();
   }
+
+  WidgetsFlutterBinding.ensureInitialized();
+  await Supabase.initialize(
+    url: 'https://hixjacbdfzrunsjffzth.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpeGphY2JkZnpydW5zamZmenRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg5MjU4NzEsImV4cCI6MjA2NDUwMTg3MX0.R3SjKc9_YueWShTy91GC1Wz2A6cM9NK0GGfHFfs_AoE',
+  );
 
   runApp(const MyApp());
 }
@@ -236,168 +243,124 @@ class DrawerMenu extends StatelessWidget{
   }
 }
 
-class ProfilePage extends StatelessWidget{
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+
   @override
-  Widget build(BuildContext context){
-    String title = 'Profile Page';
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  final supabase = Supabase.instance.client;
+
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _addressController = TextEditingController();
+
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final user = supabase.auth.currentUser;
+    final response = await supabase
+        .from('profiles')
+        .select()
+        .eq('id', user!.id)
+        .single();
+
+    final data = response;
+
+    if (data != null) {
+      _nameController.text = data['name'] ?? '';
+      _emailController.text = data['email'] ?? '';
+      _phoneController.text = data['phone'] ?? '';
+      _addressController.text = data['address'] ?? '';
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _updateProfile() async {
+    final user = supabase.auth.currentUser;
+
+    final updates = {
+      'id': user!.id,
+      'name': _nameController.text,
+      'email': _emailController.text,
+      'phone': _phoneController.text,
+      'address': _addressController.text,
+    };
+
+    await supabase.from('profiles').upsert(updates);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Profile updated successfully!')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: CustomAppBar(title: title),
-      drawer: DrawerMenu(),
+      appBar: AppBar(title: const Text("Profile")),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             CircleAvatar(
               backgroundImage: AssetImage('assets/avatar.png'),
+              radius: 40,
             ),
-            const Divider(),
-            Form(
-              child: Column(
-                children: [
-                  UserInfoEditField(
-                    text: "Name",
-                    child: TextFormField(
-                      initialValue: "Tasneem Aladra",
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: const Color(0xFF00BF6D).withOpacity(0.05),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16.0 * 1.5, vertical: 16.0),
-                        border: const OutlineInputBorder(
-                          borderSide: BorderSide.none,
-                          borderRadius: BorderRadius.all(Radius.circular(50)),
-                        ),
-                      ),
-                    ),
-                  ),
-                  UserInfoEditField(
-                    text: "Email",
-                    child: TextFormField(
-                      initialValue: "tasneem.aladra@example.com",
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: const Color(0xFF00BF6D).withOpacity(0.05),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16.0 * 1.5, vertical: 16.0),
-                        border: const OutlineInputBorder(
-                          borderSide: BorderSide.none,
-                          borderRadius: BorderRadius.all(Radius.circular(50)),
-                        ),
-                      ),
-                    ),
-                  ),
-                  UserInfoEditField(
-                    text: "Phone",
-                    child: TextFormField(
-                      initialValue: "(316) 555-0116",
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: const Color(0xFF00BF6D).withOpacity(0.05),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16.0 * 1.5, vertical: 16.0),
-                        border: const OutlineInputBorder(
-                          borderSide: BorderSide.none,
-                          borderRadius: BorderRadius.all(Radius.circular(50)),
-                        ),
-                      ),
-                    ),
-                  ),
-                  UserInfoEditField(
-                    text: "Address",
-                    child: TextFormField(
-                      initialValue: "New York, NVC",
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: const Color(0xFF00BF6D).withOpacity(0.05),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16.0 * 1.5, vertical: 16.0),
-                        border: const OutlineInputBorder(
-                          borderSide: BorderSide.none,
-                          borderRadius: BorderRadius.all(Radius.circular(50)),
-                        ),
-                      ),
-                    ),
-                  ),
-                  UserInfoEditField(
-                    text: "Old Password",
-                    child: TextFormField(
-                      obscureText: true,
-                      initialValue: "demopass",
-                      decoration: InputDecoration(
-                        suffixIcon: const Icon(
-                          Icons.visibility_off,
-                          size: 20,
-                        ),
-                        filled: true,
-                        fillColor: const Color(0xFF00BF6D).withOpacity(0.05),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16.0 * 1.5, vertical: 16.0),
-                        border: const OutlineInputBorder(
-                          borderSide: BorderSide.none,
-                          borderRadius: BorderRadius.all(Radius.circular(50)),
-                        ),
-                      ),
-                    ),
-                  ),
-                  UserInfoEditField(
-                    text: "New Password",
-                    child: TextFormField(
-                      decoration: InputDecoration(
-                        hintText: "New Password",
-                        filled: true,
-                        fillColor: const Color(0xFF00BF6D).withOpacity(0.05),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16.0 * 1.5, vertical: 16.0),
-                        border: const OutlineInputBorder(
-                          borderSide: BorderSide.none,
-                          borderRadius: BorderRadius.all(Radius.circular(50)),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16.0),
+            const SizedBox(height: 16),
+            _buildField("Name", _nameController),
+            _buildField("Email", _emailController),
+            _buildField("Phone", _phoneController),
+            _buildField("Address", _addressController),
+            const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                SizedBox(
-                  width: 120,
-                  child: ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context)
-                          .textTheme
-                          .bodyLarge!
-                          .color!
-                          .withOpacity(0.08),
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(double.infinity, 48),
-                      shape: const StadiumBorder(),
-                    ),
-                    child: const Text("Cancel"),
-                  ),
+                TextButton(
+                  onPressed: () => _loadProfile(),
+                  child: const Text("Cancel"),
                 ),
-                const SizedBox(width: 16.0),
-                SizedBox(
-                  width: 160,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00BF6D),
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(double.infinity, 48),
-                      shape: const StadiumBorder(),
-                    ),
-                    onPressed: () {},
-                    child: const Text("Save Update"),
-                  ),
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: _updateProfile,
+                  child: const Text("Save Update"),
                 ),
               ],
-            ),
+            )
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildField(String label, TextEditingController controller) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          filled: true,
+          fillColor: const Color(0xFF00BF6D).withOpacity(0.05),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(50),
+            borderSide: BorderSide.none,
+          ),
         ),
       ),
     );
