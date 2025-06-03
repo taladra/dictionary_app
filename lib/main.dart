@@ -2,12 +2,14 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobil_uygulama_proje/eng_search.dart';
 import 'package:mobil_uygulama_proje/language.dart';
 import 'package:mobil_uygulama_proje/login.dart';
 import 'package:mobil_uygulama_proje/tur_search.dart';
 import 'package:mobil_uygulama_proje/sign_up.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
 
 void main() async {
 
@@ -53,7 +55,7 @@ class MyApp extends StatelessWidget {
         '/engSearch':(context)=> const EngSearch(),
         '/turSearch':(context)=> const TurSearch(),
         '/settings':(context)=> const SettingsPage(),
-        '/profile':(context)=> const ProfilePage(),
+        '/profile':(context)=>  const ProfilePage(),
       },
       debugShowCheckedModeBanner: false,
     );
@@ -249,8 +251,7 @@ class ProfilePage extends StatefulWidget {
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
-
-class _ProfilePageState extends State<ProfilePage> {
+class _ProfilePageState extends State<ProfilePage>{
   final supabase = Supabase.instance.client;
 
   final _nameController = TextEditingController();
@@ -263,62 +264,111 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    _loadProfile();
+    _loadStoredUserData(); // First try local storage
   }
 
-  Future<void> _loadProfile() async {
-    final user = supabase.auth.currentUser;
-    final response = await supabase
-        .from('profiles')
-        .select()
-        .eq('id', user!.id)
-        .single();
+  // Load from SharedPreferences first
+  Future<void> _loadStoredUserData() async {
+    final prefs = await SharedPreferences.getInstance();
 
-    final data = response;
+    final name = prefs.getString('name');
+    final email = prefs.getString('email');
+    final phone = prefs.getString('phone');
+    final address = prefs.getString('address');
 
-    if (data != null) {
-      _nameController.text = data['name'] ?? '';
-      _emailController.text = data['email'] ?? '';
-      _phoneController.text = data['phone'] ?? '';
-      _addressController.text = data['address'] ?? '';
+    if (name != null || email != null || phone != null || address != null) {
+      _nameController.text = name ?? '';
+      _emailController.text = email ?? '';
+      _phoneController.text = phone ?? '';
+      _addressController.text = address ?? '';
     }
 
     setState(() {
       _isLoading = false;
     });
+
+    // Then load the most up-to-date data from Supabase
+    _loadProfileFromSupabase();
+  }
+
+  Future<void> _loadProfileFromSupabase() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final data = await supabase
+          .from('profiles')
+          .select()
+          .eq('id', user.id)
+          .single();
+
+      if (data != null) {
+        _nameController.text = data['name'] ?? '';
+        _emailController.text = data['email'] ?? '';
+        _phoneController.text = data['phone'] ?? '';
+        _addressController.text = data['address'] ?? '';
+
+        // Save to SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('uid', user.id);
+        await prefs.setString('email', data['email'] ?? '');
+        await prefs.setString('name', data['name'] ?? '');
+        await prefs.setString('phone', data['phone'] ?? '');
+        await prefs.setString('address', data['address'] ?? '');
+      }
+    } catch (e) {
+      print("Error loading profile from Supabase: $e");
+    }
   }
 
   Future<void> _updateProfile() async {
     final user = supabase.auth.currentUser;
+    if (user == null) return;
 
     final updates = {
-      'id': user!.id,
+      'id': user.id,
       'name': _nameController.text,
       'email': _emailController.text,
       'phone': _phoneController.text,
       'address': _addressController.text,
     };
 
-    await supabase.from('profiles').upsert(updates);
+    try {
+      await supabase.from('profiles').upsert(updates);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Profile updated successfully!')),
-    );
+      // Update SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('uid', user.id);
+      await prefs.setString('email', _emailController.text);
+      await prefs.setString('name', _nameController.text);
+      await prefs.setString('phone', _phoneController.text);
+      await prefs.setString('address', _addressController.text);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile updated successfully!')),
+      );
+    } catch (e) {
+      print("Error updating profile: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to update profile.')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    String title = 'Profile';
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-
     return Scaffold(
-      appBar: AppBar(title: const Text("Profile")),
+      appBar: CustomAppBar(title: title),
+      drawer: DrawerMenu(),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            CircleAvatar(
+            const CircleAvatar(
               backgroundImage: AssetImage('assets/avatar.png'),
               radius: 40,
             ),
@@ -332,7 +382,7 @@ class _ProfilePageState extends State<ProfilePage> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
-                  onPressed: () => _loadProfile(),
+                  onPressed: _loadProfileFromSupabase,
                   child: const Text("Cancel"),
                 ),
                 const SizedBox(width: 10),
@@ -347,6 +397,8 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
+}
+
 
   Widget _buildField(String label, TextEditingController controller) {
     return Padding(
@@ -365,7 +417,6 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
-}
 
 class UserInfoEditField extends StatelessWidget {
   const UserInfoEditField({
