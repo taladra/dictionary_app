@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mobil_uygulama_proje/language.dart';
-import 'package:mobil_uygulama_proje/login.dart';
-import 'package:mobil_uygulama_proje/tur_search.dart';
+import 'package:mobil_uygulama_proje/main.dart';
+import 'package:mobil_uygulama_proje/result.dart';
+
 
 class EngSearch extends StatefulWidget {
   const EngSearch({super.key});
@@ -13,59 +13,51 @@ class EngSearch extends StatefulWidget {
 class _EngSearchState extends State<EngSearch> {
   String _word = '';
   TextEditingController _controller = TextEditingController();
+  String title = 'English Dictionary - Search';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.deepOrange,
-        title: Text('English Dictionary - Search',
-          style: TextStyle(
-            color: Colors.white
-          ),),
-      ),
-        drawer: Drawer(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              const DrawerHeader(
-                decoration: BoxDecoration(color: Colors.deepOrangeAccent),
-                child: Text('Menu'),
-              ),
-              ListTile(
-                title: const Text('Login Page'),
-                onTap: (){
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => Login()));},),
-              ListTile(
-                title: const Text('Language Selection'),
-                onTap: (){
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => SelectLanguage()));},),
-              ListTile(
-                title: const Text('English Dictionary'),
-                onTap: (){
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => EngSearch()));},),
-              ListTile(
-                title: const Text('Türkçe Sözlük'),
-                onTap: (){
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => TurSearch()));},)
-            ],
-          ),
-        ),
+      appBar: CustomAppBar(title: title),
+      drawer: DrawerMenu(),
       body: Padding(
           padding: EdgeInsets.all(70),
-        child: TextField(
-          controller: _controller,
-          decoration: InputDecoration(
-            hintText: "Search for a word: ",
-            border: OutlineInputBorder()
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              Image.asset("assets/eng_dict.png",
+                  fit: BoxFit.cover,
+              height: MediaQuery.of(context).size.height/3.5,
+              ),
+              SizedBox(height: 50),
+              TextField(
+                controller: _controller,
+                decoration: InputDecoration(
+                  hintText: "Search for a word: ",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 50),
+              Material(
+                borderRadius: BorderRadius.circular(10),
+                child: MaterialButton(
+                  minWidth: double.infinity,
+                  height: 55,
+                  color: Colors.indigo,
+                  onPressed: (){
+                    Navigator.push(context, MaterialPageRoute(builder:
+                        (context) => ResultScreen(word: _controller.text),));
+                  },
+                  child: Text('Search',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         )
       ),
